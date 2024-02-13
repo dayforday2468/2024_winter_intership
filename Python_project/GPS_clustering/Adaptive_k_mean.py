@@ -11,7 +11,7 @@ N2 = 50
 
 # Create an instance of the ClusterGenerator and an instance of the Classifier
 cluster_gen = ClusterGenerator(seed=42)
-classifier = Classifier()
+classifier = Classifier(seed=42)
 
 # Create two clusters
 cluster1 = cluster_gen.generate_cluster(mu1, sigma1, N1)
@@ -23,11 +23,10 @@ combined_data = np.concatenate([cluster1, cluster2])
 # test adaptive k-mean
 label = classifier.adaptive_k_mean(combined_data, 2)
 
-# show the initial data
-cluster_gen.show_clusters([combined_data])
+# show true clusters
+cluster_gen.show_clusters(
+    [cluster1, cluster2], title="Before Adaptive-k-mean clustering"
+)
 
 # show the clustered data
-classifier.show_clusters(combined_data, label)
-
-# show true clusters
-cluster_gen.show_clusters([cluster1, cluster2])
+classifier.show_clusters(combined_data, label, title="After Adaptive-k-mean clustering")

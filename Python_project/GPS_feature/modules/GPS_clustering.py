@@ -29,16 +29,16 @@ class ClusterGenerator:
         else:
             plt.show()
 
-    def show_clusters(self, clusters):
-        self.plot_clusters(clusters)
+    def show_clusters(self, clusters, title="Cluster visualization"):
+        self.plot_clusters(clusters, title)
 
     def save_clusters(self, clusters, path, title="Cluster visualization"):
         self.plot_clusters(clusters, title, save_path=path)
 
 
 class Classifier:
-    def __init__(self):
-        pass
+    def __init__(self, seed=None):
+        np.random.seed(seed)
 
     def k_mean(self, data, k, iteration=10):
         # Randomly assign initial label and create the empty centroid
@@ -92,21 +92,15 @@ class Classifier:
                 (distance[current_i] < rad) & (0 < distance[current_i])
             )[0]
             nearest = np.argsort(distance[current_i][neighbor])
-            updated = 0
             for j in nearest:
                 if label[neighbor[j]] == -1:
                     continue
-                if label[current_i] != label[neighbor[j]]:
-                    label[current_i] = label[neighbor[j]]
-                    updated = 1
-                    break
+                label[current_i] = label[neighbor[j]]
+                break
             i += 1
-            if updated:
-                i = 0
         return label
 
     def __extend_cluster(self, data, cluster, unassigned_data, rad, thres):
-        update = 0
         i = 0
         while i < cluster.size:
             current_point = cluster[i]
@@ -115,7 +109,6 @@ class Classifier:
             )
             neighbor = unassigned_data[np.where(distance < rad)[0]]
             if neighbor.size != 0:
-                update = 1
                 cluster = np.union1d(cluster, neighbor)
                 unassigned_data = np.setdiff1d(unassigned_data, neighbor)
             i += 1
@@ -195,8 +188,8 @@ class Classifier:
         else:
             plt.show()
 
-    def show_clusters(self, data, label):
-        self.plot_clusters(data, label)
+    def show_clusters(self, data, label, title="Cluster visualization"):
+        self.plot_clusters(data, label, title)
 
     def save_clusters(self, data, label, path, title="Cluster visualization"):
         self.plot_clusters(data, label, title, save_path=path)

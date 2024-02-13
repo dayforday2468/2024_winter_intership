@@ -31,6 +31,10 @@ df["created_at"] = pd.Timestamp.now()
 df["created_at"] = df["created_at"].dt.strftime("%Y-%m-%d %H:%M:%S")
 df = df.drop(columns="time")
 
+# Convert latitudeE7, longitudeE7 to latitude, longitude
+df["latitude"] = df["latitude"] / (10**7)
+df["longitude"] = df["longitude"] / (10**7)
+
 # Display the updated DataFrame
 print("Updated dataframe")
 print(df)

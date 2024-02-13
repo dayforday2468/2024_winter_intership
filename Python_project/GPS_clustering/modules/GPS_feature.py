@@ -7,8 +7,10 @@ from .GPS_clustering import *
 
 
 class FeatureMaker:
-    def __init__(self):
-        pass
+    def __init__(self, rad=0.002, thres=5, home_rad=0.002):
+        self.rad = rad
+        self.thres = thres
+        self.home_rad = home_rad
 
     def location_variance(self, data):
         longitude_variance = data["longitude"].std()
@@ -24,9 +26,6 @@ class FeatureMaker:
         diff_longitude = (data["longitude"].diff()).iloc[1:]
         diff_latitude = (data["latitude"].diff()).iloc[1:]
         diff_time = (data["obtained_at"].diff()).iloc[1:] / pd.Timedelta(seconds=1)
-        diff_longitude = diff_longitude[diff_time != 0]
-        diff_latitude = diff_latitude[diff_time != 0]
-        diff_time = diff_time[diff_time != 0]
         return np.sqrt(
             np.square(diff_longitude / diff_time) + np.square(diff_latitude / diff_time)
         )
@@ -37,10 +36,10 @@ class FeatureMaker:
     def speed_variance(self, data):
         return np.std(self.speed(data))
 
-    def number_of_clusters(self, data, rad=20000, thres=4):
+    def number_of_clusters(self, data):
         classifier = Classifier()
         np_data = data[["latitude", "longitude"]].to_numpy()
-        label = classifier.DBSCAN(np_data, rad, thres)
+        label = classifier.DBSCAN(np_data, self.rad, self.thres)
         return np.max(label) + 1
 
     def __time(self, data, label):
@@ -53,29 +52,27 @@ class FeatureMaker:
                 np.diff(data["obtained_at"].to_numpy())[index] / pd.Timedelta(seconds=1)
             )
             time_list = np.append(time_list, [time])
-        return time_list
+        return time_list / np.sum(time_list)
 
-    def entropy(self, data, rad=20000, thres=4):
+    def entropy(self, data):
         classifier = Classifier()
         np_data = data[["latitude", "longitude"]].to_numpy()
-        label = classifier.DBSCAN(np_data, rad, thres)
-        time_list = self.__time(data, label)
-        percentage = time_list / np.sum(time_list)
+        label = classifier.DBSCAN(np_data, self.rad, self.thres)
+        percentage = self.__time(data, label)
         return -np.sum(percentage * np.log2(percentage))
 
-    def normalized_entropy(self, data, rad=20000, thres=4):
+    def normalized_entropy(self, data):
         classifier = Classifier()
         np_data = data[["latitude", "longitude"]].to_numpy()
-        label = classifier.DBSCAN(np_data, rad, thres)
-        time_list = self.__time(data, label)
-        percentage = time_list / np.sum(time_list)
-        return -np.sum(percentage * np.log2(percentage)) / np.log2(len(time_list))
+        label = classifier.DBSCAN(np_data, self.rad, self.thres)
+        percentage = self.__time(data, label)
+        return -np.sum(percentage * np.log2(percentage)) / np.log2(len(percentage))
 
-    def home_stay(self, data, home_label, rad):
+    def home_stay(self, data, home_label):
         home_location = home_label[["latitude", "longitude"]].to_numpy()
         classifier = Classifier()
         np_data = data[["latitude", "longitude"]].to_numpy()
-        label = classifier.neighbor(np_data, home_location, rad)
+        label = classifier.neighbor(np_data, home_location, self.home_rad)
         home_index = np.where(label == 1)[0]
         diff_time = (data["obtained_at"].diff()).iloc[1:].reset_index(
             drop=True
@@ -86,10 +83,10 @@ class FeatureMaker:
             home_index = home_index[:-1]
         return np.sum(diff_time.iloc[home_index]) / 86400
 
-    def transition_time(self, data, rad=20000, thres=4):
+    def transition_time(self, data):
         classifier = Classifier()
         np_data = data[["latitude", "longitude"]].to_numpy()
-        label = classifier.DBSCAN(np_data, rad, thres)
+        label = classifier.DBSCAN(np_data, self.rad, self.thres)
         transition_index = np.where(label == -1)[0]
         diff_time = (data["obtained_at"].diff()).iloc[1:].reset_index(
             drop=True
@@ -129,15 +126,27 @@ class FeatureMaker:
         )  # since data is measured for every 1 hour
 
         # Plot power spectrums
-        plt.figure(figsize=(12, 6))
-        plt.plot(1 / frequencies, latitude_ps, label="Latitude_ps")
-        plt.plot(1 / frequencies, longitude_ps, label="Longitude_ps")
-        plt.xlabel("Period(hour)")
-        plt.ylabel("Power spectrum")
-        plt.legend()
-        plt.xticks(np.arange(0, 25, step=1))
-        plt.xlim(0, 25)
-        plt.title("Power spectrum versus Period")
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+
+        ax1.plot(1 / frequencies, latitude_ps, label="Latitude_ps")
+        ax1.set_xlabel("Period (hour)")
+        ax1.set_ylabel("Power spectrum")
+        ax1.legend()
+        ax1.set_xticks(np.arange(0, 25, step=1))
+        ax1.set_xlim(0, 25)
+        ax1.set_ylim(0, 0.1)
+        ax1.set_title("Latitude Power Spectrum versus Period")
+
+        ax2.plot(1 / frequencies, longitude_ps, label="Longitude_ps")
+        ax2.set_xlabel("Period (hour)")
+        ax2.set_ylabel("Power spectrum")
+        ax2.legend()
+        ax2.set_xticks(np.arange(0, 25, step=1))
+        ax2.set_xlim(0, 25)
+        ax2.set_ylim(0, 1)
+        ax2.set_title("Longitude Power Spectrum versus Period")
+
+        plt.tight_layout()
         plt.show()
 
         # Compute the circadian movement
@@ -146,7 +155,7 @@ class FeatureMaker:
         E_longtitude = np.sum(longitude_ps[index_24]).astype(float)
         return np.log2(E_latitude + E_longtitude)
 
-    def __harversine(self, location1, location2):
+    def harversine(self, location1, location2):
         # Radius of the Earth in kilometers
         R = 6371.0
 
@@ -163,7 +172,7 @@ class FeatureMaker:
         dlat = lat2 - lat1
 
         a = np.sin(dlat / 2) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2) ** 2
-        c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+        c = 2 * np.arcsin(np.sqrt(a))
 
         distance = R * c
 
@@ -175,8 +184,6 @@ class FeatureMaker:
         time_series = data.set_index("obtained_at")
         time_series = time_series.resample("10T").mean()
         time_series = time_series.interpolate()
-        time_series["latitude"] = time_series["latitude"] / (10**7)
-        time_series["longitude"] = time_series["longitude"] / (10**7)
 
         # Calculate the distance
         distance = list()
@@ -184,7 +191,7 @@ class FeatureMaker:
             if i == time_series.shape[0] - 1:
                 break
             distance.append(
-                self.__harversine(time_series.iloc[i], time_series.iloc[i + 1])
+                self.harversine(time_series.iloc[i], time_series.iloc[i + 1])
             )
 
         # Calculate the activity percentile

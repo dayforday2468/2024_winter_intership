@@ -11,7 +11,7 @@ N2 = 50
 
 # Create an instance of the ClusterGenerator and an instance of the Classifier
 cluster_gen = ClusterGenerator(seed=42)
-classifier = Classifier()
+classifier = Classifier(seed=42)
 
 # Create two clusters
 cluster1 = cluster_gen.generate_cluster(mu1, sigma1, N1)
@@ -21,13 +21,10 @@ cluster2 = cluster_gen.generate_cluster(mu2, sigma2, N2)
 combined_data = np.concatenate([cluster1, cluster2])
 
 # test DBSCAN
-label = classifier.DBSCAN(combined_data, rad=4, thres=4)
-
-# show the initial data
-cluster_gen.show_clusters([combined_data])
-
-# show the clusterd data
-classifier.show_clusters(combined_data, label)
+label = classifier.DBSCAN(combined_data, rad=4, thres=3)
 
 # show the true clusters
-cluster_gen.show_clusters([cluster1, cluster2])
+cluster_gen.show_clusters([cluster1, cluster2], title="Before DBSCAN clustering")
+
+# show the clusterd data
+classifier.show_clusters(combined_data, label, title="After DBSCAN clustering")

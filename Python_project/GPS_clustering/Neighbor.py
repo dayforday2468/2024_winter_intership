@@ -7,7 +7,7 @@ N = 100
 
 # Create an instance of the ClusterGenerator and an instance of the Classifier
 cluster_gen = ClusterGenerator(seed=42)
-classifier = Classifier()
+classifier = Classifier(seed=42)
 
 # Create two clusters
 cluster = cluster_gen.generate_cluster(mu, sigma, N)
@@ -16,7 +16,7 @@ cluster = cluster_gen.generate_cluster(mu, sigma, N)
 label = classifier.neighbor(cluster, np.array([0, 0]), 1)
 
 # show the initial data
-cluster_gen.show_clusters([cluster])
+cluster_gen.show_clusters([cluster], title="Before neighbor clustering")
 
 # show the clustered data
-classifier.show_clusters(cluster, label)
+classifier.show_clusters(cluster, label, title="After neighbor clustering")
